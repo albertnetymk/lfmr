@@ -7,18 +7,18 @@
 
 void mr_init()
 {
-  /* Do nothing. */
-  return;
+    /* Do nothing. */
+    return;
 }
 
 void mr_thread_exit()
 {
-  /* Do nothing. */
-  return;
+    /* Do nothing. */
+    return;
 }
 
 void mr_reinitialize()
 {
-  /* Do nothing. */
-  return;
+    /* Do nothing. */
+    return;
 }

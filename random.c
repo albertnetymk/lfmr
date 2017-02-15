@@ -47,7 +47,7 @@
  */
 void init_Random()
 {
-	/* Do nothing. */
+    /* Do nothing. */
 }
 
 /*
@@ -55,7 +55,7 @@ void init_Random()
  */
 void sRandom(unsigned long seed)
 {
-	this_thread()->randseed = seed;
+    this_thread()->randseed = seed;
 }
 
 /*
@@ -65,20 +65,21 @@ void sRandom(unsigned long seed)
  */
 unsigned long Random()
 {
-	register long x, hi, lo, t;
+    register long x, hi, lo, t;
 
-	/*
-	 * Compute x[n + 1] = (7^5 * x[n]) mod (2^31 - 1).
-	 * From "Random number generators: good ones are hard to find",
-	 * Park and Miller, Communications of the ACM, vol. 31, no. 10,
-	 * October 1988, p. 1195.
-	 */
-	x = this_thread()->randseed;
-	hi = x / 127773;
-	lo = x % 127773;
-	t = 16807 * lo - 2836 * hi;
-	if (t <= 0)
-		t += 0x7fffffff;
-	this_thread()->randseed = t;
-	return (t);
+    /*
+     * Compute x[n + 1] = (7^5 * x[n]) mod (2^31 - 1).
+     * From "Random number generators: good ones are hard to find",
+     * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+     * October 1988, p. 1195.
+     */
+    x = this_thread()->randseed;
+    hi = x / 127773;
+    lo = x % 127773;
+    t = 16807 * lo - 2836 * hi;
+    if (t <= 0) {
+        t += 0x7fffffff;
+    }
+    this_thread()->randseed = t;
+    return (t);
 }

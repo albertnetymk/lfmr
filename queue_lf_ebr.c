@@ -1,8 +1,8 @@
 /*
  * Implementation of a lock-free queue based on code in:
  *
- *  M. M. Michael. Hazard Pointers: Safe Memory Reclamation for Lock-Free 
- *  Objects. IEEE TPDS (2004) IEEE Transactions on Parallel and Distributed 
+ *  M. M. Michael. Hazard Pointers: Safe Memory Reclamation for Lock-Free
+ *  Objects. IEEE TPDS (2004) IEEE Transactions on Parallel and Distributed
  *  Systems 15(8), August 2004.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -32,136 +32,139 @@
 #include <stdio.h>
 
 struct queue {
-	node_t *head  __attribute__ ((__aligned__ (CACHESIZE)));
-	node_t *tail  __attribute__ ((__aligned__ (CACHESIZE)));
+    node_t *head  __attribute__ ((__aligned__(CACHESIZE)));
+    node_t *tail  __attribute__ ((__aligned__(CACHESIZE)));
 };
 
 void queue_init(struct queue **q)
 {
-	node_t *node = new_node();
-	
-	(*q) = (struct queue *)mapmem(sizeof(struct queue));
-	
-	if (node == NULL) {
-		fprintf(stderr, "queue_init: out of memory\n");
-	}
+    node_t *node = new_node();
 
-	node->next = NULL;
-	(*q)->head = node;
-	(*q)->tail = node;
+    (*q) = (struct queue*)mapmem(sizeof(struct queue));
+
+    if (node == NULL) {
+        fprintf(stderr, "queue_init: out of memory\n");
+    }
+
+    node->next = NULL;
+    (*q)->head = node;
+    (*q)->tail = node;
 }
 
 void queue_destroy(struct queue **q)
 {
-	free(*q);
+    free(*q);
 }
 
 void enqueue(struct queue *q, long key)
 {
-	node_t *node;
-	node_t *t;
-	node_t *next;
+    node_t *node;
+    node_t *t;
+    node_t *next;
 
-	backoff_reset();
+    backoff_reset();
 
  retry:
-	/* Initialize the new node. */
-	critical_enter();
-	node = new_node();
-	if (node == NULL)
-	{
-		critical_exit();
-		update_epoch();
-		if (node == NULL) cond_yield();
-		goto retry;
-	}
+    /* Initialize the new node. */
+    critical_enter();
+    node = new_node();
+    if (node == NULL) {
+        critical_exit();
+        update_epoch();
+        if (node == NULL) {
+            cond_yield();
+        }
+        goto retry;
+    }
 
-	node->key = key;
-	node->next = NULL;
+    node->key = key;
+    node->next = NULL;
 
-	/* Can't insert it if it's not pointing to NULL! */
-	write_barrier();
- 
-	while(1) {
-		/* Get the old tail pointer. */
-		t = q->tail;
-		if (q->tail != t) {
-			continue;
-		}
+    /* Can't insert it if it's not pointing to NULL! */
+    write_barrier();
 
-		/* Help update the tail pointer if needed. */
-		next = t->next;
-		if (next != NULL) {
-			CAS(&q->tail, t, next); 
-			continue;
-		}
+    while (1) {
+        /* Get the old tail pointer. */
+        t = q->tail;
+        if (q->tail != t) {
+            continue;
+        }
 
-		/* Attempt to link in the new element. */
-		if (CAS(&t->next, NULL, node))
-			break;
-		else
-			backoff_delay();
-	}
-	
-	/* Swing the tail to the new element. */
-	CAS(&q->tail, t, node);
+        /* Help update the tail pointer if needed. */
+        next = t->next;
+        if (next != NULL) {
+            CAS(&q->tail, t, next);
+            continue;
+        }
 
-	critical_exit();
+        /* Attempt to link in the new element. */
+        if (CAS(&t->next, NULL, node)) {
+            break;
+        } else{
+            backoff_delay();
+        }
+    }
+
+    /* Swing the tail to the new element. */
+    CAS(&q->tail, t, node);
+
+    critical_exit();
 }
 
 long dequeue(struct queue *q)
 {
-	node_t *h, *t, *next;
-	long data;
+    node_t *h, *t, *next;
+    long data;
 
-	backoff_reset();
+    backoff_reset();
 
-	critical_enter();
+    critical_enter();
 
-	while (1) {
-		/* Get the old head and tail elements. */
-		h = q->head;
-		t = q->tail;
-		
-		/* Get the head element's successor. */
-		next = h->next;
-		memory_barrier();
-		if (q->head != h) {
-			continue;
-		}
-		
-		/* If the head (dummy) element is the only one, return EMPTY. */
-		if (next == NULL) {
-			critical_exit();
-			return -1; /* Empty. */
-		}
-		
-		/* There are multiple elements. Help update tail if needed. */
-		if (h == t) {
-			CAS(&q->tail, t, next);
-			continue;
-		}
-		
-		/* 
-		 * Save the data of the head's successor. It will become the
-		 * new dummy node.
-		 */
-		data = next->key;
-		
-		/* 
-		 * Attempt to update the head pointer so that it points to the
-		 * new dummy node.
-		 */
-		if (CAS(&q->head, h, next))
-			break;
-		else
-			backoff_delay();
-	}
-	
-	/* The old dummy node has been unlinked, so reclaim it. */
-	free_node_later(h);
+    while (1) {
+        /* Get the old head and tail elements. */
+        h = q->head;
+        t = q->tail;
 
-	critical_exit();
-	
-	return data;
+        /* Get the head element's successor. */
+        next = h->next;
+        memory_barrier();
+        if (q->head != h) {
+            continue;
+        }
+
+        /* If the head (dummy) element is the only one, return EMPTY. */
+        if (next == NULL) {
+            critical_exit();
+            return -1;             /* Empty. */
+        }
+
+        /* There are multiple elements. Help update tail if needed. */
+        if (h == t) {
+            CAS(&q->tail, t, next);
+            continue;
+        }
+
+        /*
+         * Save the data of the head's successor. It will become the
+         * new dummy node.
+         */
+        data = next->key;
+
+        /*
+         * Attempt to update the head pointer so that it points to the
+         * new dummy node.
+         */
+        if (CAS(&q->head, h, next)) {
+            break;
+        } else{
+            backoff_delay();
+        }
+    }
+
+    /* The old dummy node has been unlinked, so reclaim it. */
+    free_node_later(h);
+
+    critical_exit();
+
+    return data;
 }

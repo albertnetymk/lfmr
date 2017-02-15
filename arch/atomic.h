@@ -28,14 +28,14 @@
  */
 #define CAS(ptr, oldval, newval) (atomic_cmpxchg_ptr((ptr), (oldval), (newval)) == (oldval))
 #define atomic_cmpxchg_ptr(p, o, n) \
-	(typeof(*(p)))atomic_cmpxchg4((atomic_t *)p, (atomic_t)o, (atomic_t)n)
+    (typeof(*(p)))atomic_cmpxchg4((atomic_t*)p, (atomic_t)o, (atomic_t)n)
 #define atomic_read_ptr(p) \
-	(typeof(*(p)))atomic_read4((atomic_t *)p)
+    (typeof(*(p)))atomic_read4((atomic_t*)p)
 
 typedef unsigned long atomic_t;
 
 static inline unsigned long atomic_xchg4(volatile atomic_t *ptr,
-					 unsigned long value);
+                                         unsigned long value);
 
 /*
  * Atomically compare and exchange the value pointed to by ptr
@@ -46,18 +46,18 @@ static inline unsigned long atomic_xchg4(volatile atomic_t *ptr,
 
 static inline unsigned long
 atomic_cmpxchg4(volatile atomic_t *ptr,
-	        unsigned long oldval,
-		unsigned long newval)
+                unsigned long oldval,
+                unsigned long newval)
 {
-	unsigned long retval;
+    unsigned long retval;
 
-	asm("# atomic_cmpxchg4\n"
-	    "lock; cmpxchgl %4,(%2)\n"
-	    "# end atomic_cmpxchg4"
-	    : "=a" (retval), "=m" (*ptr)
-	    : "r" (ptr), "0" (oldval), "r" (newval), "m" (*ptr)
-	    : "cc");
-	return (retval);
+    asm ("# atomic_cmpxchg4\n"
+         "lock; cmpxchgl %4,(%2)\n"
+         "# end atomic_cmpxchg4"
+         : "=a" (retval), "=m" (*ptr)
+         : "r" (ptr), "0" (oldval), "r" (newval), "m" (*ptr)
+         : "cc");
+    return (retval);
 }
 
 /*
@@ -67,14 +67,14 @@ atomic_cmpxchg4(volatile atomic_t *ptr,
 static inline unsigned long
 atomic_read4(volatile atomic_t *ptr)
 {
-	unsigned long retval;
+    unsigned long retval;
 
-	asm("# atomic_read4\n"
-	    "mov (%1),%0\n"
-	    "# end atomic_read4"
-	    : "=r" (retval)
-	    : "r" (ptr), "m" (*ptr));
-	return (retval);
+    asm ("# atomic_read4\n"
+         "mov (%1),%0\n"
+         "# end atomic_read4"
+         : "=r" (retval)
+         : "r" (ptr), "m" (*ptr));
+    return (retval);
 }
 
 /*
@@ -84,7 +84,7 @@ atomic_read4(volatile atomic_t *ptr)
 static inline void
 atomic_set4(volatile atomic_t *ptr, unsigned long newvalue)
 {
-	(void)atomic_xchg4(ptr, newvalue);
+    (void)atomic_xchg4(ptr, newvalue);
 }
 
 /*
@@ -95,15 +95,15 @@ atomic_set4(volatile atomic_t *ptr, unsigned long newvalue)
 static inline unsigned long
 atomic_xadd4(volatile atomic_t *ctr, unsigned long addend)
 {
-	unsigned long retval;
+    unsigned long retval;
 
-	asm("# atomic_xadd4\n"
-	    "lock; xaddl %3,(%2)\n"
-	    "# end atomic_xadd4"
-	    : "=r" (retval), "=m" (*ctr)
-	    : "r" (ctr), "0" (addend), "m" (*ctr)
-	    : "cc");
-	return (retval);
+    asm ("# atomic_xadd4\n"
+         "lock; xaddl %3,(%2)\n"
+         "# end atomic_xadd4"
+         : "=r" (retval), "=m" (*ctr)
+         : "r" (ctr), "0" (addend), "m" (*ctr)
+         : "cc");
+    return (retval);
 }
 
 /*
@@ -114,15 +114,15 @@ atomic_xadd4(volatile atomic_t *ctr, unsigned long addend)
 static inline unsigned long
 atomic_xchg4(volatile atomic_t *ptr, unsigned long value)
 {
-	unsigned long retval;
+    unsigned long retval;
 
-	asm("# atomic_xchg4\n"
-	    "lock; xchgl %3,(%2)\n"
-	    "# end atomic_xchg4"
-	    : "=r" (retval), "=m" (*ptr)
-	    : "r" (ptr), "0" (value), "m" (*ptr)
-	    : "cc");
-	return (retval);
+    asm ("# atomic_xchg4\n"
+         "lock; xchgl %3,(%2)\n"
+         "# end atomic_xchg4"
+         : "=r" (retval), "=m" (*ptr)
+         : "r" (ptr), "0" (value), "m" (*ptr)
+         : "cc");
+    return (retval);
 }
 
 /*
@@ -140,7 +140,7 @@ atomic_xchg4(volatile atomic_t *ptr, unsigned long value)
 static inline void
 compiler_barrier(void)
 {
-	asm volatile("" : : : "memory");
+    asm volatile ("" : : : "memory");
 }
 
 /*
@@ -151,10 +151,10 @@ compiler_barrier(void)
 static inline void
 memory_barrier(void)
 {
-	atomic_t junk;
+    atomic_t junk;
 
-	(void)atomic_xchg4(&junk, 0);
-	compiler_barrier();
+    (void)atomic_xchg4(&junk, 0);
+    compiler_barrier();
 }
 
 /*
@@ -166,7 +166,7 @@ memory_barrier(void)
 static inline void
 memory_barrier_rcu(void)
 {
-	compiler_barrier();
+    compiler_barrier();
 }
 
 /*
@@ -178,7 +178,7 @@ memory_barrier_rcu(void)
 static inline void
 write_barrier(void)
 {
-	compiler_barrier();
+    compiler_barrier();
 }
 
 /*
@@ -189,7 +189,7 @@ write_barrier(void)
 static inline void
 spin_lock_barrier(void)
 {
-	compiler_barrier();
+    compiler_barrier();
 }
 
 /*
@@ -200,7 +200,7 @@ spin_lock_barrier(void)
 static inline void
 spin_unlock_barrier(void)
 {
-	compiler_barrier();
+    compiler_barrier();
 }
 
 #endif /* #ifndef _ATOMIC_H */

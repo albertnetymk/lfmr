@@ -30,99 +30,102 @@
 #include <stdio.h>
 
 struct list {
-	spinlock_t list_lock;
-	node_t *list_head;
+    spinlock_t list_lock;
+    node_t *list_head;
 };
 
 void list_init(struct list **l)
 {
-	*l = (struct list *)mapmem(sizeof(struct list));
-	(*l)->list_lock = SPIN_LOCK_UNLOCKED;
-	(*l)->list_head = NULL;
+    *l = (struct list*)mapmem(sizeof(struct list));
+    (*l)->list_lock = SPIN_LOCK_UNLOCKED;
+    (*l)->list_head = NULL;
 }
 
 void list_destroy(struct list **l)
 {
-	free(*l);
+    free(*l);
 }
 
 /* Debugging function. */
-void show(struct list *l) {
-	node_t *cur;
-	
-	for (cur = l->list_head; cur != NULL; cur=cur->next)
-		printf("{%d} ", cur->key);
-	printf("\n");
+void show(struct list *l)
+{
+    node_t *cur;
+
+    for (cur = l->list_head; cur != NULL; cur = cur->next) {
+        printf("{%d} ", cur->key);
+    }
+    printf("\n");
 }
 
 int search(struct list *l, long key)
-{	
-	node_t *cur;
+{
+    node_t *cur;
 
-	spin_lock(&l->list_lock);
-	
-	for (cur = l->list_head; cur != NULL; cur=cur->next) {
-		if (cur->key >= key) {
-			spin_unlock(&l->list_lock);
-			return (cur->key == key);
-		}
-	}
-	
-	spin_unlock(&l->list_lock);
-	return 0;
+    spin_lock(&l->list_lock);
+
+    for (cur = l->list_head; cur != NULL; cur = cur->next) {
+        if (cur->key >= key) {
+            spin_unlock(&l->list_lock);
+            return (cur->key == key);
+        }
+    }
+
+    spin_unlock(&l->list_lock);
+    return 0;
 }
 
 int delete(struct list *l, long key)
 {
-	node_t *cur;
-	node_t **prev;
+    node_t *cur;
+    node_t **prev;
 
-	spin_lock(&l->list_lock);
-	
-	prev = &l->list_head;
+    spin_lock(&l->list_lock);
 
-	for (cur = *prev; cur != NULL; cur=cur->next) {
-		if (cur->key == key) {
-			*prev = cur->next;
-			free_node(cur);
-			spin_unlock(&l->list_lock);
-			return 1;
-		}
-		prev = &cur->next;
-	}
-	
-	spin_unlock(&l->list_lock);
-	return 0;
+    prev = &l->list_head;
+
+    for (cur = *prev; cur != NULL; cur = cur->next) {
+        if (cur->key == key) {
+            *prev = cur->next;
+            free_node(cur);
+            spin_unlock(&l->list_lock);
+            return 1;
+        }
+        prev = &cur->next;
+    }
+
+    spin_unlock(&l->list_lock);
+    return 0;
 }
 
 int insert(struct list *l, long key)
 {
-	node_t *cur;
-	node_t **prev;
-	node_t *newnode;
+    node_t *cur;
+    node_t **prev;
+    node_t *newnode;
 
-	spin_lock(&l->list_lock);
-	
-	/* Find cur, prev s. th. *prev=cur, and (cur=NULL or cur->key>=key). */
-	prev = &l->list_head;
-	for (cur = *prev; 
-	     cur != NULL && cur->key < key; 
-	     cur=cur->next, prev=&(*prev)->next) {}
+    spin_lock(&l->list_lock);
 
-	/* Abort if the key is already in the list. */
-	if (cur != NULL) {
-	  if (cur->key == key) {
-	    spin_unlock(&l->list_lock);
-	    return 0;
-	  }
-	}
+    /* Find cur, prev s. th. *prev=cur, and (cur=NULL or cur->key>=key). */
+    prev = &l->list_head;
+    for (cur = *prev;
+         cur != NULL && cur->key < key;
+         cur = cur->next, prev = &(*prev)->next) {
+    }
 
-	/* Insert the new key. */
-	newnode = new_node();
-	newnode->key = key;
-	newnode->next = cur;
-	*prev = newnode;
-	
-	spin_unlock(&l->list_lock);
-	return 1;
+    /* Abort if the key is already in the list. */
+    if (cur != NULL) {
+        if (cur->key == key) {
+            spin_unlock(&l->list_lock);
+            return 0;
+        }
+    }
+
+    /* Insert the new key. */
+    newnode = new_node();
+    newnode->key = key;
+    newnode->next = cur;
+    *prev = newnode;
+
+    spin_unlock(&l->list_lock);
+    return 1;
 }

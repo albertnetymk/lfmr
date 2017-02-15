@@ -41,7 +41,7 @@ void list_destroy(struct list **l)
 }
 
 int search(struct list *l, long key)
-{	
+{
 }
 
 int delete(struct list *l, long key)

@@ -28,65 +28,66 @@
 #include <stdio.h>
 
 struct queue {
-	node_t *head;
-	node_t *tail;
-	spinlock_t lock;
+    node_t *head;
+    node_t *tail;
+    spinlock_t lock;
 };
 
 void queue_init(struct queue **q)
 {
-	(*q) = (struct queue *)mapmem(sizeof(struct queue));
-	(*q)->head = NULL;
-	(*q)->tail = NULL;
-	(*q)->lock = SPIN_LOCK_UNLOCKED;
+    (*q) = (struct queue*)mapmem(sizeof(struct queue));
+    (*q)->head = NULL;
+    (*q)->tail = NULL;
+    (*q)->lock = SPIN_LOCK_UNLOCKED;
 }
 
 void queue_destroy(struct queue **q)
 {
-	free(*q);
+    free(*q);
 }
 
 void enqueue(struct queue *q, long key)
 {
-  node_t *node = new_node();
+    node_t *node = new_node();
 
-  /* Prepare the new node. */
-  if (node == NULL) {
-    fprintf(stderr, "enqueue: out of memory\n");
-    do {} while(1);
-  }
-  node->next = NULL;
-  node->key = key;
+    /* Prepare the new node. */
+    if (node == NULL) {
+        fprintf(stderr, "enqueue: out of memory\n");
+        do {} while (1);
+    }
+    node->next = NULL;
+    node->key = key;
 
-  /* Link it in. */
-  spin_lock(&q->lock);
-  if (q->tail == NULL) {
-	  q->head = q->tail = node;
-  } else {
-	  q->tail->next = node;
-	  q->tail = node;
-  }
-  spin_unlock(&q->lock);
+    /* Link it in. */
+    spin_lock(&q->lock);
+    if (q->tail == NULL) {
+        q->head = q->tail = node;
+    } else {
+        q->tail->next = node;
+        q->tail = node;
+    }
+    spin_unlock(&q->lock);
 }
 
 long dequeue(struct queue *q)
 {
-  node_t *node;
-  unsigned long data;
+    node_t *node;
+    unsigned long data;
 
-  spin_lock(&q->lock);
-  if (q->head == NULL) {
-	  spin_unlock(&q->lock);
-	  return -1; /* EMPTY */
-  }
-  node = q->head;
-  if (q->head == q->tail)
-	  q->head = q->tail = NULL;
-  else
-	  q->head = q->head->next;
-  spin_unlock(&q->lock);
+    spin_lock(&q->lock);
+    if (q->head == NULL) {
+        spin_unlock(&q->lock);
+        return -1;   /* EMPTY */
+    }
+    node = q->head;
+    if (q->head == q->tail) {
+        q->head = q->tail = NULL;
+    } else{
+        q->head = q->head->next;
+    }
+    spin_unlock(&q->lock);
 
-  data = node->key;
-  free_node(node);
-  return data;
+    data = node->key;
+    free_node(node);
+    return data;
 }
