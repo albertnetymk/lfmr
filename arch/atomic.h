@@ -49,15 +49,9 @@ atomic_cmpxchg4(volatile atomic_t *ptr,
                 unsigned long oldval,
                 unsigned long newval)
 {
-    unsigned long retval;
-
-    asm ("# atomic_cmpxchg4\n"
-         "lock; cmpxchgl %4,(%2)\n"
-         "# end atomic_cmpxchg4"
-         : "=a" (retval), "=m" (*ptr)
-         : "r" (ptr), "0" (oldval), "r" (newval), "m" (*ptr)
-         : "cc");
-    return (retval);
+    __atomic_compare_exchange_n(ptr, &oldval, newval, 0,
+                                __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+    return oldval;
 }
 
 /*
@@ -67,14 +61,7 @@ atomic_cmpxchg4(volatile atomic_t *ptr,
 static inline unsigned long
 atomic_read4(volatile atomic_t *ptr)
 {
-    unsigned long retval;
-
-    asm ("# atomic_read4\n"
-         "mov (%1),%0\n"
-         "# end atomic_read4"
-         : "=r" (retval)
-         : "r" (ptr), "m" (*ptr));
-    return (retval);
+    return __atomic_load_n(ptr, __ATOMIC_ACQUIRE);
 }
 
 /*
@@ -95,15 +82,7 @@ atomic_set4(volatile atomic_t *ptr, unsigned long newvalue)
 static inline unsigned long
 atomic_xadd4(volatile atomic_t *ctr, unsigned long addend)
 {
-    unsigned long retval;
-
-    asm ("# atomic_xadd4\n"
-         "lock; xaddl %3,(%2)\n"
-         "# end atomic_xadd4"
-         : "=r" (retval), "=m" (*ctr)
-         : "r" (ctr), "0" (addend), "m" (*ctr)
-         : "cc");
-    return (retval);
+    return __atomic_fetch_add(ctr, addend, __ATOMIC_RELEASE);
 }
 
 /*
@@ -114,15 +93,7 @@ atomic_xadd4(volatile atomic_t *ctr, unsigned long addend)
 static inline unsigned long
 atomic_xchg4(volatile atomic_t *ptr, unsigned long value)
 {
-    unsigned long retval;
-
-    asm ("# atomic_xchg4\n"
-         "lock; xchgl %3,(%2)\n"
-         "# end atomic_xchg4"
-         : "=r" (retval), "=m" (*ptr)
-         : "r" (ptr), "0" (value), "m" (*ptr)
-         : "cc");
-    return (retval);
+    return __atomic_exchange_n(ptr, value, __ATOMIC_RELAXED);
 }
 
 /*
