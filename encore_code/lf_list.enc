@@ -141,83 +141,83 @@ shared class List : Insert * Delete * Find {
     this.head = consume dummyHead;
   }
 
-  -- def search(key : int) : (Node, Node) {
-  --   let tail = this.tail;
-  --   while (true) {
-  --     let prev = this.head;
-  --     let cur = speculate prev.next;
-
-  --     while (true) {
-  --       if (cur == tail) then {
-  --         return (prev, cur);
-  --       };
-  --       let next = speculate cur.next;
-  --       if (isStable(cur.next)) then {
-  --         unless CAT(prev.next, cur, next) then {
-  --           break;
-  --         };
-  --       } else {
-  --         if (cur.key >= key) then {
-  --           return (prev, cur);
-  --         };
-  --         prev = cur;
-  --       };
-  --       cur = next;
-  --     };
-  --   };
-
-  --   return (null : Node, null : Node); -- Should never happen
-  -- }
-
-  -- Original Harris algo
-
   def search(key : int) : (Node, Node) {
-    let leftNode = null : Node;
-    let rightNode = null : Node;
+    let tail = this.tail;
+    while (true) {
+      let prev = this.head;
+      let cur = speculate prev.next;
 
-    while(true) {
-      let t = this.head;
-
-      -- 1. Find left and right nodes
-      while(true) {
-        if(not isStable(t.next)) then {
-          leftNode = t;
+      while (true) {
+        if (cur == tail) then {
+          return (prev, cur);
         };
-        t = speculate t.next;
-        if (t == this.tail) then {
-           break;
-        };
-        unless(isStable(t.next) or t.key < key) then {
-          break;
-        }
-      };
-      rightNode = t;
-
-      -- 2. Check that nodes are adjacent
-      if (rightNode == leftNode.next) then {
-        unless (rightNode != this.tail and isStable(rightNode.next)) then {
-          return (leftNode, rightNode)
-        }
-      } else {
-        -- Nodes are not adjacent
-        let oldNext = speculate leftNode.next;
-        if (isStable(oldNext.next)) then {
-          -- leftNode.next has been removed
-          -- Try to move it forward
-          if (CAT(leftNode.next, oldNext, oldNext.next)) then {
-            unless (rightNode != this.tail and isStable(rightNode.next)) then {
-              return (leftNode, rightNode);
-            }
-          }
+        let next = speculate cur.next;
+        if (isStable(cur.next)) then {
+          unless CAT(prev.next, cur, cur.next) then {
+            break;
+          };
         } else {
-          -- A new node has been inserted after leftNode, restart
-          ()
-        }
-      }
+          if (cur.key >= key) then {
+            return (prev, cur);
+          };
+          prev = cur;
+        };
+        cur = next;
+      };
     };
 
     return (null : Node, null : Node); -- Should never happen
   }
+
+  -- Original Harris algo
+
+  -- def search(key : int) : (Node, Node) {
+  --   let leftNode = null : Node;
+  --   let rightNode = null : Node;
+
+  --   while(true) {
+  --     let t = this.head;
+
+  --     -- 1. Find left and right nodes
+  --     while(true) {
+  --       if(not isStable(t.next)) then {
+  --         leftNode = t;
+  --       };
+  --       t = speculate t.next;
+  --       if (t == this.tail) then {
+  --          break;
+  --       };
+  --       unless(isStable(t.next) or t.key < key) then {
+  --         break;
+  --       }
+  --     };
+  --     rightNode = t;
+
+  --     -- 2. Check that nodes are adjacent
+  --     if (rightNode == leftNode.next) then {
+  --       unless (rightNode != this.tail and isStable(rightNode.next)) then {
+  --         return (leftNode, rightNode)
+  --       }
+  --     } else {
+  --       -- Nodes are not adjacent
+  --       let oldNext = speculate leftNode.next;
+  --       if (isStable(oldNext.next)) then {
+  --         -- leftNode.next has been removed
+  --         -- Try to move it forward
+  --         if (CAT(leftNode.next, oldNext, oldNext.next)) then {
+  --           unless (rightNode != this.tail and isStable(rightNode.next)) then {
+  --             return (leftNode, rightNode);
+  --           }
+  --         }
+  --       } else {
+  --         -- A new node has been inserted after leftNode, restart
+  --         ()
+  --       }
+  --     }
+  --   };
+
+  --   return (null : Node, null : Node); -- Should never happen
+  -- }
 }
 
 class Agent {

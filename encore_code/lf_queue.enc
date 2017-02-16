@@ -147,7 +147,6 @@ class Agent {
             key = r % #{nkeys};
 
             if (action) {
-            puts("enqueue");
               _enc__method_Queue_enqueue_future(_ctx,
                 _this->_enc__field_q, key);
             } else {
