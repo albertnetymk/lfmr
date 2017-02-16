@@ -14,11 +14,11 @@
 
 #define N_EPOCHS 3
 #define NS_PER_S 1000000000
-#define CACHESIZE 128           /* Should cover most machines. */
+#define CACHESIZE 64           /* Should cover most machines. */
 #define MAX_THREADS 65
 
-__attribute__ ((__aligned__(CACHESIZE)))
 typedef struct per_thread_t {
+    __attribute__ ((__aligned__(CACHESIZE)))
     pthread_t thread;
     unsigned long seed;
     size_t ops;
