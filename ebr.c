@@ -128,7 +128,7 @@ void mr_init()
 
     eg = (struct ebr_globals*)mapmem(sizeof(struct ebr_globals));
 
-    for (i = 0; i < MAX_THREADS + 1; i++) {
+    for (i = 0; i < MAX_THREADS; i++) {
         threads[i].epoch = 0;
         threads[i].in_critical = 0;
         threads[i].entries_since_update = 0;
@@ -156,7 +156,7 @@ void mr_reinitialize()
 {
     int i;
 
-    for (i = 0; i < MAX_THREADS + 1; i++) {
+    for (i = 0; i < MAX_THREADS; i++) {
         threads[i].epoch = 0;
         threads[i].in_critical = 0;
         threads[i].entries_since_update = 0;

@@ -36,7 +36,7 @@ void mr_init()
     }
 
     /* Initialize rlists. */
-    for (i = 0; i < MAX_THREADS + 1; i++) {
+    for (i = 0; i < MAX_THREADS; i++) {
         threads[i].rlist = NULL;
         threads[i].retire_count = 0;
         threads[i].plist = (node_t**)
