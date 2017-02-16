@@ -37,10 +37,10 @@ void mr_init()
 
     /* Initialize rlists. */
     for (i = 0; i < MAX_THREADS + 1; i++) {
-        get_thread(i)->rlist = NULL;
-        get_thread(i)->rcount = 0;
-        get_thread(i)->plist = (node_t**)
-                               malloc(sizeof(node_t *) * K * tg->nthreads);
+        threads[i].rlist = NULL;
+        threads[i].retire_count = 0;
+        threads[i].plist = (node_t**)
+                           malloc(sizeof(node_t *) * K * n_threads);
     }
 
     /* Initialize the hazard pointers. */
@@ -51,14 +51,14 @@ void mr_init()
 
 void mr_thread_exit()
 {
-    unsigned long myTID = getTID();
-    int i;
+    unsigned long myTID = thread_id;
+    uint32_t i;
 
     for (i = 0; i < K; i++) {
         HP[K * myTID + i].p = NULL;
     }
 
-    while (this_thread()->rcount > 0) {
+    while (this_thread.retire_count > 0) {
         scan();
         cond_yield();
     }
@@ -81,7 +81,7 @@ void mr_reinitialize()
  */
 int compare(const void *a, const void *b)
 {
-    return (*(node_t**)a - *(node_t**)b);
+    return (int)(*(node_t**)a - *(node_t**)b);
 }
 
 /* Debugging function. Leave it around. */
@@ -100,13 +100,13 @@ void scan()
 {
     /* Iteratation variables. */
     node_t *cur;
-    int i;
+    uint32_t i;
 
     /* List of SMR callbacks. */
     node_t *tmplist;
 
     /* List of hazard pointers, and its size. */
-    node_t **plist = this_thread()->plist;
+    node_t **plist = this_thread.plist;
     unsigned long psize;
 
     /*
@@ -135,18 +135,18 @@ void scan()
     qsort(plist, psize, sizeof(node_t *), compare);
 
     /* Stage 3: Free non-harzardous nodes. */
-    tmplist = this_thread()->rlist;
-    this_thread()->rlist = NULL;
-    this_thread()->rcount = 0;
+    tmplist = this_thread.rlist;
+    this_thread.rlist = NULL;
+    this_thread.retire_count = 0;
     while (tmplist != NULL) {
         /* Pop cur off top of tmplist. */
         cur = tmplist;
         tmplist = tmplist->mr_next;
 
         if (bsearch(&cur, plist, psize, sizeof(node_t *), compare)) {
-            cur->mr_next = this_thread()->rlist;
-            this_thread()->rlist = cur;
-            this_thread()->rcount++;
+            cur->mr_next = this_thread.rlist;
+            this_thread.rlist = cur;
+            this_thread.retire_count++;
         } else {
             free_node(cur);
         }
@@ -155,11 +155,11 @@ void scan()
 
 void free_node_later(node_t *n)
 {
-    n->mr_next = this_thread()->rlist;
-    this_thread()->rlist = n;
-    this_thread()->rcount++;
+    n->mr_next = this_thread.rlist;
+    this_thread.rlist = n;
+    this_thread.retire_count++;
 
-    if (this_thread()->rcount >= R) {
+    if (this_thread.retire_count >= R) {
         scan();
     }
 }

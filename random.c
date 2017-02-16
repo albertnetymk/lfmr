@@ -55,7 +55,7 @@ void init_Random()
  */
 void sRandom(unsigned long seed)
 {
-    this_thread()->randseed = seed;
+    this_thread.seed = seed;
 }
 
 /*
@@ -73,13 +73,13 @@ unsigned long Random()
      * Park and Miller, Communications of the ACM, vol. 31, no. 10,
      * October 1988, p. 1195.
      */
-    x = this_thread()->randseed;
+    x = (long)this_thread.seed;
     hi = x / 127773;
     lo = x % 127773;
     t = 16807 * lo - 2836 * hi;
     if (t <= 0) {
         t += 0x7fffffff;
     }
-    this_thread()->randseed = t;
-    return (t);
+    this_thread.seed = (unsigned long)t;
+    return (unsigned long)t;
 }

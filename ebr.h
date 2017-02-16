@@ -1,7 +1,7 @@
-/* 
+/*
  * Functions for epoch-based reclamation.
  *
- * See Keir Fraser. "Practical Lock-Freedom." Ph.D. Thesis, University of 
+ * See Keir Fraser. "Practical Lock-Freedom." Ph.D. Thesis, University of
  * Cambridge Computer Laboratory, 2003.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -30,12 +30,12 @@
 void critical_enter();
 void critical_exit();
 
-/* 
- * Call this *directly* if and only if we're out of memory. 
+/*
+ * Call this *directly* if and only if we're out of memory.
  */
 void update_epoch();
 
-/* 
+/*
  * Since multiple algorithms could use epoch-based reclamation, factor the
  * initialization code into a function they can all call.
  */

@@ -30,5 +30,4 @@ int hash_search(struct hash_table *h, long key);
 int hash_delete(struct hash_table *h, long key);
 int hash_insert(struct hash_table *h, long key);
 
-
 #endif

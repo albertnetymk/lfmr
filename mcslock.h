@@ -1,9 +1,9 @@
-/* 
+/*
  * MCS (Mellor-Crummey and Scott) queueing locks.
  *
  * See:
- * "Algorithms for Scalable Synchronization on Shared-Memory Multiprocessors," 
- *  by J. M. Mellor-Crummey and M. L. Scott. ACM Trans. on Computer Systems, 
+ * "Algorithms for Scalable Synchronization on Shared-Memory Multiprocessors,"
+ *  by J. M. Mellor-Crummey and M. L. Scott. ACM Trans. on Computer Systems,
  *  Feb. 1991.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -34,11 +34,10 @@
 #define TRUE 1
 #endif
 
-typedef struct qnode
-{
-	int locked;
-	/* Hardwire CACHESIZE as 128 to avoid having to #include test.h. */
-	struct qnode *next  __attribute__ ((__aligned__ (128)));
+typedef struct qnode {
+    int locked;
+    /* Hardwire CACHESIZE as 128 to avoid having to #include test.h. */
+    struct qnode *next  __attribute__ ((__aligned__(128)));
 } qnode_t;
 
 /* An mcslock is a pointer to the tail of a queue. */

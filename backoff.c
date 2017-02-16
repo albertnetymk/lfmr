@@ -24,7 +24,7 @@ void backoff_reset()
 
 long backoff_delay()
 {
-        #ifdef USE_BACKOFF
+#ifdef USE_BACKOFF
     int i;
     long j;
 
@@ -42,6 +42,6 @@ long backoff_delay()
     if (j == this_thread()->backoff_amount) {
         return j;
     }
-        #endif
+#endif
     return 0;
 }

@@ -1,8 +1,8 @@
 /*
  * Lock-free reference counting API taken from:
  *
- * Michael, M. M. and Scott, M. L. 1995 Correction of a Memory Management Method 
- * for Lock-Free Data Structures. Technical Report. UMI Order Number: TR599., 
+ * Michael, M. M. and Scott, M. L. 1995 Correction of a Memory Management Method
+ * for Lock-Free Data Structures. Technical Report. UMI Order Number: TR599.,
  * University of Rochester.
  *
  * This program is free software; you can redistribute it and/or modify

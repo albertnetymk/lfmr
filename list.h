@@ -30,5 +30,4 @@ int search(struct list *l, long key);
 int delete(struct list *l, long key);
 int insert(struct list *l, long key);
 
-
 #endif

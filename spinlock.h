@@ -37,21 +37,21 @@ typedef atomic_t spinlock_t;
 static inline void
 spin_lock(spinlock_t *slp)
 {
-	unsigned long result;
+    unsigned long result;
 
-	backoff_reset();
+    backoff_reset();
 
-	for (;;) {
-		result = atomic_cmpxchg4(slp, 0, 1);
-		if (result == 0) {
-			spin_lock_barrier();
-			return;
-		}
-		while (*slp != 0) {
-			backoff_delay();
-			memory_barrier();
-		}
-	}
+    for (;; ) {
+        result = atomic_cmpxchg4(slp, 0, 1);
+        if (result == 0) {
+            spin_lock_barrier();
+            return;
+        }
+        while (*slp != 0) {
+            backoff_delay();
+            memory_barrier();
+        }
+    }
 }
 
 /*
@@ -61,11 +61,11 @@ spin_lock(spinlock_t *slp)
 static inline int
 spin_trylock(spinlock_t *slp)
 {
-	unsigned long result;
+    unsigned long result;
 
-	result = atomic_cmpxchg4(slp, 0, 1);
-	spin_lock_barrier();
-	return (!result);
+    result = atomic_cmpxchg4(slp, 0, 1);
+    spin_lock_barrier();
+    return (!result);
 }
 
 /*
@@ -75,12 +75,12 @@ spin_trylock(spinlock_t *slp)
 static inline void
 spin_unlock(spinlock_t *slp)
 {
-	unsigned long result;
+    unsigned long result;
 
-	spin_unlock_barrier();
-	if ((result = atomic_xchg4(slp, SPIN_LOCK_UNLOCKED)) != 1) {
-		abort();
-	}
+    spin_unlock_barrier();
+    if ((result = atomic_xchg4(slp, SPIN_LOCK_UNLOCKED)) != 1) {
+        abort();
+    }
 }
 
 #endif /* #ifndef __SPINLOCK_H */

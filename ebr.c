@@ -18,6 +18,8 @@
 
 #include "ebr.h"
 #include "test.h"
+#include "allocator.h"
+#include "util.h"
 #include "spinlock.h"
 #include <stdio.h>
 
@@ -28,7 +30,7 @@ struct ebr_globals {
     int global_epoch __attribute__ ((__aligned__(CACHESIZE)));
 };
 
-struct ebr_globals *eg __attribute__ ((__aligned__(CACHESIZE)));
+static struct ebr_globals *eg __attribute__ ((__aligned__(CACHESIZE)));
 
 /* Processes a list of callbacks.
  *
@@ -37,7 +39,6 @@ struct ebr_globals *eg __attribute__ ((__aligned__(CACHESIZE)));
 void process_callbacks_epoch(node_t **list)
 {
     node_t *next;
-    node_t *dead;
     unsigned long num = 0;
 
     /* This is only called from critical_enter(), which starts with a
@@ -52,14 +53,12 @@ void process_callbacks_epoch(node_t **list)
     }
 
     /* Update our accounting information. */
-    this_thread()->rcount -= num;
+    this_thread.retire_count -= num;
 }
 
 void update_epoch()
 {
     int curr_epoch;
-    int i;
-    int old;
 
     if (!spin_trylock(&eg->update_lock)) {
         /* Someone could be preempted while holding the update lock. Give
@@ -70,9 +69,9 @@ void update_epoch()
 
     /* If any CPU hasn't advanced to the current epoch, abort the attempt. */
     curr_epoch = eg->global_epoch;
-    for (i = 0; i < tg->nthreads; i++) {
-        if (get_thread(i)->in_critical == 1 &&
-            get_thread(i)->epoch != curr_epoch) {
+    for (size_t i = 0; i < n_threads; ++i) {
+        if (threads[i].in_critical == 1 &&
+            threads[i].epoch != curr_epoch) {
             spin_unlock(&eg->update_lock);
             /* Give other threads a chance to see the global epoch. */
             /* Only do it if out of memory. */
@@ -93,22 +92,22 @@ void update_epoch()
 
 void critical_enter()
 {
-    struct per_thread *t = this_thread();
+    struct per_thread_t t = this_thread;
     int epoch;
 
  retry:
-    t->in_critical = 1;
+    t.in_critical = 1;
     memory_barrier();     /* Not safe to proceed until our flag is visible. */
 
     epoch = eg->global_epoch;
-    if (t->epoch != epoch) {     /* New epoch. */
+    if (t.epoch != epoch) {     /* New epoch. */
         /* Process callbacks for old 'incarnation' of this epoch. */
-        process_callbacks_epoch(&t->limbo_list[epoch]);
-        t->epoch = epoch;
-        t->entries_since_update = 0;
-    } else if (t->entries_since_update++ == UPDATE_THRESHOLD) {
-        t->in_critical = 0;
-        t->entries_since_update = 0;
+        process_callbacks_epoch(&t.limbo_list[epoch]);
+        t.epoch = epoch;
+        t.entries_since_update = 0;
+    } else if (t.entries_since_update++ == UPDATE_THRESHOLD) {
+        t.in_critical = 0;
+        t.entries_since_update = 0;
         update_epoch();
         goto retry;
     }
@@ -120,7 +119,7 @@ void critical_exit()
 {
     memory_barrier();     /* Can't let flag be unset while we're still in
                            * a critical section! */
-    this_thread()->in_critical = 0;
+    this_thread.in_critical = 0;
 }
 
 void mr_init()
@@ -130,12 +129,12 @@ void mr_init()
     eg = (struct ebr_globals*)mapmem(sizeof(struct ebr_globals));
 
     for (i = 0; i < MAX_THREADS + 1; i++) {
-        get_thread(i)->epoch = 0;
-        get_thread(i)->in_critical = 0;
-        get_thread(i)->entries_since_update = 0;
-        get_thread(i)->rcount = 0;
+        threads[i].epoch = 0;
+        threads[i].in_critical = 0;
+        threads[i].entries_since_update = 0;
+        threads[i].retire_count = 0;
         for (j = 0; j < N_EPOCHS; j++) {
-            get_thread(i)->limbo_list[j] = NULL;
+            threads[i].limbo_list[j] = NULL;
         }
     }
 
@@ -145,7 +144,7 @@ void mr_init()
 
 void mr_thread_exit()
 {
-    while (this_thread()->rcount > 0) {
+    while (this_thread.retire_count > 0) {
         update_epoch();
         critical_enter();
         critical_exit();
@@ -158,10 +157,10 @@ void mr_reinitialize()
     int i;
 
     for (i = 0; i < MAX_THREADS + 1; i++) {
-        get_thread(i)->epoch = 0;
-        get_thread(i)->in_critical = 0;
-        get_thread(i)->entries_since_update = 0;
-        get_thread(i)->rcount = 0;
+        threads[i].epoch = 0;
+        threads[i].in_critical = 0;
+        threads[i].entries_since_update = 0;
+        threads[i].retire_count = 0;
     }
 
     eg->global_epoch = 1;
@@ -172,8 +171,8 @@ void mr_reinitialize()
  */
 void free_node_later(node_t *q)
 {
-    struct per_thread *t = this_thread();
-    q->mr_next = t->limbo_list[t->epoch];
-    t->limbo_list[t->epoch] = q;
-    t->rcount++;
+    struct per_thread_t t = this_thread;
+    q->mr_next = t.limbo_list[t.epoch];
+    t.limbo_list[t.epoch] = q;
+    t.retire_count++;
 }

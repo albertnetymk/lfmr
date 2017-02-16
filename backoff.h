@@ -21,8 +21,14 @@
 #ifndef BACKOFF_H
 #define BACKOFF_H
 
+#ifdef USE_BACKOFF
 void backoff_init();
 void backoff_reset();
 long backoff_delay();
+#else
+#define backoff_init()
+#define backoff_reset()
+#define backoff_delay()
+#endif
 
 #endif

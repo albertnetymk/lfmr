@@ -1,29 +1,3 @@
-/*
- * Implementation of a lock-free list-based set based on Michael's
- * modification of Harris' original algorithm, but using EBR.
- *
- * Follows the pseudocode given in :
- *  M. M. Michael. Hazard Pointers: Safe Memory Reclamation for Lock-Free
- *  Objects. IEEE TPDS (2004) IEEE Transactions on Parallel and Distributed
- *  Systems 15(8), August 2004.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
- * Copyright (c) Thomas E. Hart.
- */
-
 #include "ebr.h"
 #include "test.h"
 #include "arch/atomic.h"
@@ -63,9 +37,9 @@ void list_destroy(struct list **l)
  *       use two levels of indirection for the head: we need prev to point to
  *       the right thing in the calling function, not a local head variable.
  */
-int find(node_t **head, long key, unsigned long myTID)
+int find(node_t **head, long key)
 {
-    node_t **prev, *cur, *next;
+    node_t **prev, *cur, *next = NULL;
 
  try_again:
     prev = head;
@@ -91,9 +65,9 @@ int find(node_t **head, long key, unsigned long myTID)
                 goto try_again;
             }
             if (ckey >= key) {
-                this_thread()->cur = cur;
-                this_thread()->prev = prev;
-                this_thread()->next = next;
+                this_thread.cur = cur;
+                this_thread.prev = prev;
+                this_thread.next = next;
                 return (ckey == key);
             }
 
@@ -101,9 +75,9 @@ int find(node_t **head, long key, unsigned long myTID)
         }
     }
 
-    this_thread()->cur = cur;
-    this_thread()->prev = prev;
-    this_thread()->next = next;
+    this_thread.cur = cur;
+    this_thread.prev = prev;
+    this_thread.next = next;
     return (0);
 }
 
@@ -111,7 +85,6 @@ int insert(struct list *l, long key)
 {
     node_t **head = &l->list_head;
     node_t *n = new_node();
-    unsigned long myTID = getTID();
 
     backoff_reset();
 
@@ -128,16 +101,16 @@ int insert(struct list *l, long key)
     }
 
     while (1) {
-        if (find(head, key, myTID)) {
+        if (find(head, key)) {
             critical_exit();
             free_node(n);
             return (0);
         }
         n->key = key;
-        n->next = this_thread()->cur;
+        n->next = this_thread.cur;
         write_barrier();
 
-        if (CAS(this_thread()->prev, this_thread()->cur, n)) {
+        if (CAS(this_thread.prev, this_thread.cur, n)) {
             critical_exit();
             return (1);
         } else {
@@ -149,7 +122,6 @@ int insert(struct list *l, long key)
 int delete(struct list *l, long key)
 {
     node_t **head = &l->list_head;
-    unsigned long myTID = getTID();
 
     backoff_reset();
 
@@ -157,23 +129,23 @@ int delete(struct list *l, long key)
 
     while (1) {
         /* Try to find the key in the list. */
-        if (!find(head, key, myTID)) {
+        if (!find(head, key)) {
             critical_exit();
             return (0);
         }
 
         /* Mark if needed. */
-        if (!CAS(&this_thread()->cur->next,
-                 this_thread()->next,
-                 (node_t*)((unsigned long)this_thread()->next + 1))) {
+        if (!CAS(&this_thread.cur->next,
+                 this_thread.next,
+                 (node_t*)((unsigned long)this_thread.next + 1))) {
             backoff_delay();
             continue;             /* Another thread interfered. */
         }
 
         write_barrier();
-        if (CAS(this_thread()->prev,
-                this_thread()->cur, this_thread()->next)) {          /* Unlink */
-            free_node_later(this_thread()->cur);             /* Reclaim */
+        if (CAS(this_thread.prev,
+                this_thread.cur, this_thread.next)) {          /* Unlink */
+            free_node_later(this_thread.cur);             /* Reclaim */
         }
         /*
          * If we want to revent the possibility of there being an

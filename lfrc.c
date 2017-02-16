@@ -65,19 +65,15 @@ static void clear_lowest_bit(unsigned long *p)
 /* Initialize the allocator. */
 void init_allocator()
 {
-    int i;
-    int j;
-    int nelementsfree;
+    uint32_t nelementsfree;
     node_t *shdmem;
 
-    tg->out_of_memory = 0;
-
-    nelementsfree = tg->nelements
+    nelementsfree = n_elements
                     + (2 * MAX_THREADS * PT_FREELIST_TARGET)
                     + (MAX_THREADS * 1000);
 
     /* Initialize the global freelist. */
-    tg->global_freelist = NULL;
+    global_freelist = NULL;
 
     /* Initialize the per-threads data. */
     /*for (i = 0; i < MAX_THREADS; i++) {
@@ -94,7 +90,7 @@ void init_allocator()
     }
 
     /* Initialize the nodes and place them on the freelist. */
-    for (i = 0; i < nelementsfree; i++) {
+    for (uint32_t i = 0; i < nelementsfree; i++) {
         shdmem[i].key = -1;
         shdmem[i].next = NULL;
         shdmem[i].mr_next = NULL;
@@ -107,18 +103,17 @@ void init_allocator()
 node_t *new_node()
 {
     node_t *p;
-    int x;
 
     while (1) {
-        p = safe_read(&tg->global_freelist);
+        p = safe_read(&global_freelist);
         if (p == NULL) {
-            atomic_xadd4(&tg->out_of_memory, 1);
+            exit(-1);
             return NULL;             /* out of memory */
         }
         /* Reference count can be anything here, since multiple threads
          * could have gotten a reference to the node on the freelist.
          */
-        if (CAS(&tg->global_freelist, p, p->mr_next)) {
+        if (CAS(&global_freelist, p, p->mr_next)) {
             clear_lowest_bit(&p->refcnt);
             return p;
         } else {
@@ -133,12 +128,12 @@ void free_node(node_t *p)
 
     p->next = (node_t*)0x300300;
     do {
-        old = tg->global_freelist;
-        p->mr_next = tg->global_freelist;
+        old = global_freelist;
+        p->mr_next = global_freelist;
         if ((unsigned long)p & 1) {
             printf("free error\n"); do {} while (1);
         }
-    } while (!CAS(&tg->global_freelist, old, p));
+    } while (!CAS(&global_freelist, old, p));
 }
 
 /****************************************************************************

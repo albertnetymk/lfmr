@@ -1,29 +1,3 @@
-/*
- * Implementation of a lock-free list-based set based on Michael's
- * modification of Harris' original algorithm using hazard pointers.
- *
- * Follows the pseudocode given in :
- *  M. M. Michael. Hazard Pointers: Safe Memory Reclamation for Lock-Free
- *  Objects. IEEE TPDS (2004) IEEE Transactions on Parallel and Distributed
- *  Systems 15(8), August 2004.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
- * Copyright (c) Thomas E. Hart.
- */
-
 #include "lfrc.h"
 #include "test.h"
 #include "arch/atomic.h"
@@ -42,11 +16,8 @@ struct list {
  *
  * Solve this problem by having an array of refs here, similar to the
  * hazard pointer array.
- *
- * Well, now that we're using fork() instead of pthreads, just make it an
- * array of size 3. ;-)
  */
-node_t *refs[3];
+static __thread node_t *refs[3];
 
 /* Helper function. */
 static inline void release_temp_refs(unsigned long myTID)
@@ -87,7 +58,7 @@ void list_destroy(struct list **l)
 int find(node_t **head, long key, unsigned long myTID)
 {
     node_t **tmp;
-    node_t **prev, *cur, *next;
+    node_t **prev, *cur, *next = NULL;
     node_t **ref0, **ref1, **ref2;
 
     ref0 = &refs[0];
@@ -122,9 +93,9 @@ int find(node_t **head, long key, unsigned long myTID)
                 goto try_again;
             }
             if (cur->key >= key) {
-                this_thread()->cur = cur;
-                this_thread()->prev = prev;
-                this_thread()->next = next;
+                this_thread.cur = cur;
+                this_thread.prev = prev;
+                this_thread.next = next;
                 return (cur->key == key);
             }
 
@@ -138,9 +109,9 @@ int find(node_t **head, long key, unsigned long myTID)
         }
     }
 
-    this_thread()->cur = cur;
-    this_thread()->prev = prev;
-    this_thread()->next = next;
+    this_thread.cur = cur;
+    this_thread.prev = prev;
+    this_thread.next = next;
     return (0);
 }
 
@@ -148,8 +119,7 @@ int insert(struct list *l, long key)
 {
     node_t **head = &l->list_head;
     node_t *n = new_node();
-    unsigned long myTID = getTID();
-    node_t *cur;
+    unsigned long myTID = thread_id;
 
     backoff_reset();
 
@@ -166,10 +136,10 @@ int insert(struct list *l, long key)
         }
 
         n->key = key;
-        n->next = this_thread()->cur;
+        n->next = this_thread.cur;
         write_barrier();
 
-        if (CAS(this_thread()->prev, this_thread()->cur, n)) {
+        if (CAS(this_thread.prev, this_thread.cur, n)) {
             /* cur still has the same number of references to it */
             release_temp_refs(myTID);
             return (1);
@@ -183,8 +153,7 @@ int insert(struct list *l, long key)
 int delete(struct list *l, long key)
 {
     node_t **head = &l->list_head;
-    unsigned long myTID = getTID();
-    node_t *cur;
+    unsigned long myTID = thread_id;
 
     backoff_reset();
 
@@ -202,12 +171,12 @@ int delete(struct list *l, long key)
          *
          * Increment the reference HERE so that helpers don't have to
          * worry about it. */
-        lfrc_refcnt_inc(this_thread()->next);
+        lfrc_refcnt_inc(this_thread.next);
 
         /* Mark if needed. */
-        if (!CAS(&this_thread()->cur->next,
-                 this_thread()->next,
-                 (node_t*)((unsigned long)this_thread()->next + 1))) {
+        if (!CAS(&this_thread.cur->next,
+                 this_thread.next,
+                 (node_t*)((unsigned long)this_thread.next + 1))) {
             release_temp_refs(myTID);
             backoff_delay();
             continue;             /* Another thread interfered. */
@@ -215,9 +184,9 @@ int delete(struct list *l, long key)
 
         write_barrier();
 
-        if (CAS(this_thread()->prev,
-                this_thread()->cur, this_thread()->next)) {            /* Unlink */
-            lfrc_refcnt_dec(this_thread()->cur);
+        if (CAS(this_thread.prev,
+                this_thread.cur, this_thread.next)) {            /* Unlink */
+            lfrc_refcnt_dec(this_thread.cur);
         }
 
         release_temp_refs(myTID);
@@ -230,7 +199,7 @@ int search(struct list *l, long key)
     node_t **tmp;
     node_t **prev, *cur, *next;
     node_t **ref0, **ref1, **ref2;
-    unsigned long myTID = getTID();
+    unsigned long myTID = thread_id;
     int retval;
 
     backoff_reset();

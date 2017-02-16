@@ -79,16 +79,17 @@ double min(double *data, int samples)
  */
 void *mapmem(size_t length)
 {
-    void *p;
+    return malloc(length);
+    // void *p;
 
-    p = mmap(NULL, length,
-             PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED,
-             -1, (off_t)0);
-    if (p == (void*)-1) {
-        perror("mmap");
-        exit(-1);
-    }
-    return p;
+    // p = mmap(NULL, length,
+    //          PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED,
+    //          -1, (off_t)0);
+    // if (p == (void*)-1) {
+    //     perror("mmap");
+    //     exit(-1);
+    // }
+    // return p;
 }
 
 /* MCS locking operations. Put them here for the sake of convenience. */

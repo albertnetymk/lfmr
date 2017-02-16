@@ -16,8 +16,8 @@ node_t *new_node()
 
 void free_node(node_t *n)
 {
-    n->next = 0x11;
-    n->mr_next = 0x22;
+    n->next = (void*)0x11;
+    n->mr_next = (void*)0x22;
     free(n);
 }
 

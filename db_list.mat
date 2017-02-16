@@ -1,0 +1,41 @@
+# Created by Octave 3.8.1, Thu Feb 16 01:47:12 2017 CET <albert@albert-ThinkPad-T440s>
+# name: db_list_total_avg
+# type: matrix
+# rows: 4
+# columns: 1
+ 73
+ 1473
+ 358
+ 196
+
+
+# name: db_list_total_std
+# type: matrix
+# rows: 4
+# columns: 1
+ 0
+ 0
+ 0
+ 0
+
+
+# name: db_list_footprint_avg
+# type: matrix
+# rows: 4
+# columns: 1
+ 32900
+ 4324
+ 1924
+ 20232
+
+
+# name: db_list_footprint_std
+# type: matrix
+# rows: 4
+# columns: 1
+ 0
+ 0
+ 0
+ 0
+
+

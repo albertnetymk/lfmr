@@ -8,10 +8,10 @@
 #include "spinlock.h"
 
 typedef struct node {
-	unsigned long key;
-	struct node *next;
-	struct node *mr_next;
-	unsigned long refcnt; /* For lock-free reference counting. */
+    long key;
+    struct node *next;
+    struct node *mr_next;
+    unsigned long refcnt;     /* For lock-free reference counting. */
 } node_t;
 
 #endif
