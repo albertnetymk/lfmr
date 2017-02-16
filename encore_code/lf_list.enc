@@ -1,0 +1,369 @@
+embed
+#include <time.h>
+#include <sys/select.h>
+size_t get_clock_getime();
+unsigned long myrandom(unsigned long seed);
+void milisleep(size_t ms);
+body
+/*
+ * Pseudo-random number generator for randomizing the profiling clock,
+ * and whatever else we might use it for.  The result is uniform on
+ * [0, 2^31 - 1].
+ */
+unsigned long myrandom(unsigned long seed)
+{
+  register long x, hi, lo, t;
+
+  /*
+   * Compute x[n + 1] = (7^5 * x[n]) mod (2^31 - 1).
+   * From "Random number generators: good ones are hard to find",
+   * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+   * October 1988, p. 1195.
+   */
+  x = seed;
+  hi = x / 127773;
+  lo = x % 127773;
+  t = 16807 * lo - 2836 * hi;
+  if (t <= 0)
+    t += 0x7fffffff;
+  return (t);
+}
+
+size_t get_clock_getime()
+{
+  int retval;
+  struct timespec tv;
+
+  retval = clock_gettime(CLOCK_MONOTONIC, &tv);
+  if (retval != 0) {
+    perror("gettimeofday");
+    exit(-1);
+  }
+  return tv.tv_sec * 1000000000 + tv.tv_nsec;
+}
+
+void milisleep(size_t ms)
+{
+    struct timeval tv;
+    tv.tv_sec= ms / 1000;
+    tv.tv_usec= (ms % 1000) * 1000;
+    select(0, NULL, NULL, NULL, &tv);
+}
+end
+
+trait T
+
+passive class Node : spine T {
+  val key : int
+  spec next : Node
+
+  def init(key : int) : void {
+    this.key = key;
+  }
+}
+
+lockfree trait Insert {
+  require val tail : Node
+  require search(key : int) : (Node, Node)
+
+  def insert(key : int) : bool {
+    let newNode = new Node(key);
+    -- print("inserted {}\n", newNode);
+    while(true) {
+      match this.search(key) with (l, r) => {
+        if ((r != this.tail) and (r.key == key)) then {
+          -- The element was already in the list, fail
+          return false;
+        } else {
+          -- print "insert";
+          newNode.next = r;
+          -- Try to insert the element
+          if(CAT(l.next, r, newNode)) then {
+            return true;
+          }
+        }
+      }
+    };
+    return false; -- This should never happen
+
+  }
+}
+
+lockfree trait Delete {
+  require val tail : Node
+  require search(key : int) : (Node, Node)
+
+  def delete(key : int) : bool {
+    while(true) {
+      match this.search(key) with (l, r) => {
+        if ((r == this.tail) or (r.key != key)) then {
+          return false;
+        };
+        if (not isStable(r.next)) then {
+          if(fix(r.next)) then {
+            if (not CAT(l.next, r, r.next)) then {
+              this.search(r.key);
+            };
+            return true;
+          }
+        }
+      }
+    };
+    return false; -- This should never happen
+  }
+
+}
+
+lockfree trait Find {
+  require val tail : Node
+  require search(key : int) : (Node, Node)
+
+  def find(key : int) : bool {
+    match this.search(key) with (l, r) => {
+      if(r == this.tail or r.key != key) then {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  }
+}
+
+shared class List : Insert * Delete * Find {
+  val head : Node
+  val tail : Node
+
+  def init() : void {
+    let dummyHead = new Node(0);
+    let dummyTail = new Node(-1);
+    dummyHead.next = consume dummyTail;
+    this.tail = speculate dummyHead.next;
+    this.head = consume dummyHead;
+  }
+
+  -- def search(key : int) : (Node, Node) {
+  --   let tail = this.tail;
+  --   while (true) {
+  --     let prev = this.head;
+  --     let cur = speculate prev.next;
+
+  --     while (true) {
+  --       if (cur == tail) then {
+  --         return (prev, cur);
+  --       };
+  --       let next = speculate cur.next;
+  --       if (isStable(cur.next)) then {
+  --         unless CAT(prev.next, cur, next) then {
+  --           break;
+  --         };
+  --       } else {
+  --         if (cur.key >= key) then {
+  --           return (prev, cur);
+  --         };
+  --         prev = cur;
+  --       };
+  --       cur = next;
+  --     };
+  --   };
+
+  --   return (null : Node, null : Node); -- Should never happen
+  -- }
+
+  -- Original Harris algo
+
+  def search(key : int) : (Node, Node) {
+    let leftNode = null : Node;
+    let rightNode = null : Node;
+
+    while(true) {
+      let t = this.head;
+
+      -- 1. Find left and right nodes
+      while(true) {
+        if(not isStable(t.next)) then {
+          leftNode = t;
+        };
+        t = speculate t.next;
+        if (t == this.tail) then {
+           break;
+        };
+        unless(isStable(t.next) or t.key < key) then {
+          break;
+        }
+      };
+      rightNode = t;
+
+      -- 2. Check that nodes are adjacent
+      if (rightNode == leftNode.next) then {
+        unless (rightNode != this.tail and isStable(rightNode.next)) then {
+          return (leftNode, rightNode)
+        }
+      } else {
+        -- Nodes are not adjacent
+        let oldNext = speculate leftNode.next;
+        if (isStable(oldNext.next)) then {
+          -- leftNode.next has been removed
+          -- Try to move it forward
+          if (CAT(leftNode.next, oldNext, oldNext.next)) then {
+            unless (rightNode != this.tail and isStable(rightNode.next)) then {
+              return (leftNode, rightNode);
+            }
+          }
+        } else {
+          -- A new node has been inserted after leftNode, restart
+          ()
+        }
+      }
+    };
+
+    return (null : Node, null : Node); -- Should never happen
+  }
+}
+
+class Agent {
+  seed: int
+  l : List
+  over : bool
+  main : Main
+  ops : int
+  elements : int
+  update : int
+
+  def init(main:Main, elements:int, update:int, l:List) : void {
+    -- print("agent is {}\n", this);
+    this.main = main;
+    this.update = update;
+    let it = this;
+    this.over = false;
+    this.ops = 0;
+    this.seed = embed int (unsigned long)(#{it}+1) + (time(0) << 4); end;
+    -- print this.seed;
+    this.l = l;
+    this.elements = elements;
+  }
+
+  def start() : void {
+    this!loop();
+  }
+
+  def loop() : void {
+    if this.over then {
+      this.main!done(this.ops);
+      return;
+    } else {
+      -- print "loop";
+      let elements = this.elements;
+      let update = this.update;
+      let seed = this.seed;
+      embed void (
+        {
+          int seed;
+          unsigned long r;
+          unsigned long action;
+          unsigned long ins_del;
+          unsigned long arange = 101;
+          unsigned long amask = (1<<10) - 1;
+          long key;
+
+          seed = #{seed};
+          for (int i = 0; i < 100; i++) {
+            seed = r = myrandom(seed);
+            ins_del = r & 1;
+            r >>= 1;
+            action = ((r & amask) % arange);
+            r >>= 10;
+            key = r % #{elements};
+
+            if (action <= (100-#{update})) {
+              _enc__method_List_find_future(_ctx, _this->_enc__field_l, key);
+            } else if (ins_del == 0) {
+              _enc__method_List_delete_future(_ctx, _this->_enc__field_l, key);
+            } else {
+              _enc__method_List_insert_future(_ctx, _this->_enc__field_l, key);
+            }
+          }
+          _this->_enc__field_seed = seed;
+        }
+      ); end;
+      this.ops = this.ops + 100;
+      this!loop();
+    };
+  }
+
+  def stop() : void {
+    this.over = true;
+  }
+}
+
+
+class Main
+  threads : int
+  total_ops : int
+  joined_t : int
+  start : int
+
+  def done(ops:int) : void {
+    this.total_ops = this.total_ops + ops;
+    this.joined_t = this.joined_t + 1;
+    if (this.threads == this.joined_t) then {
+      let over = embed int get_clock_getime(); end;
+      if this.total_ops == 0 then {
+        print "Error: zero ops";
+        assertTrue(false);
+      };
+      let co = if this.threads <= 64 then this.threads else 1;
+      print(co * (over - this.start) / this.total_ops);
+    };
+  }
+
+  def main(args:[String]) : void {
+    -- print("main is {}\n", this);
+    if (|args| != 5) then {
+      print "runtime update elements threads";
+      return;
+    };
+    let runtime = (
+      match (args[1]).to_int() with
+        Just n => n
+        Nothing => 0);
+    let update = (
+      match (args[2]).to_int() with
+        Just n => n
+        Nothing => 0);
+    let elements = (
+      match (args[3]).to_int() with
+        Just n => n
+        Nothing => 0);
+    let threads = (
+      match (args[4]).to_int() with
+        Just n => n
+        Nothing => 0);
+
+    -- print runtime;
+    -- print update;
+    -- print elements;
+    -- print threads;
+
+    this.joined_t = 0;
+    this.threads = threads;
+
+    let l = new List;
+    repeat i <- elements {
+      l.insert(i*2);
+    };
+
+    let agents = new [Agent](threads);
+    repeat i <- threads {
+      agents[i] = new Agent(this, elements, update, l);
+    };
+
+    this.start = embed int get_clock_getime(); end;
+    repeat i <- threads {
+      agents[i]!start();
+    };
+
+    embed void milisleep(#{runtime}); end;
+    repeat i <- threads {
+      agents[i]!stop();
+    };
+  }

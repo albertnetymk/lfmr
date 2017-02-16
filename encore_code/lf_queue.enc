@@ -1,0 +1,235 @@
+embed
+#include <time.h>
+#include <sys/select.h>
+size_t get_clock_getime();
+unsigned long myrandom(unsigned long seed);
+void milisleep(size_t ms);
+body
+/*
+ * Pseudo-random number generator for randomizing the profiling clock,
+ * and whatever else we might use it for.  The result is uniform on
+ * [0, 2^31 - 1].
+ */
+unsigned long myrandom(unsigned long seed)
+{
+  register long x, hi, lo, t;
+
+  /*
+   * Compute x[n + 1] = (7^5 * x[n]) mod (2^31 - 1).
+   * From "Random number generators: good ones are hard to find",
+   * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+   * October 1988, p. 1195.
+   */
+  x = seed;
+  hi = x / 127773;
+  lo = x % 127773;
+  t = 16807 * lo - 2836 * hi;
+  if (t <= 0)
+    t += 0x7fffffff;
+  return (t);
+}
+
+size_t get_clock_getime()
+{
+  int retval;
+  struct timespec tv;
+
+  retval = clock_gettime(CLOCK_MONOTONIC, &tv);
+  if (retval != 0) {
+    perror("gettimeofday");
+    exit(-1);
+  }
+  return tv.tv_sec * 1000000000 + tv.tv_nsec;
+}
+
+void milisleep(size_t ms)
+{
+    struct timeval tv;
+    tv.tv_sec= ms / 1000;
+    tv.tv_usec= (ms % 1000) * 1000;
+    select(0, NULL, NULL, NULL, &tv);
+}
+end
+trait T
+
+passive class Node : spine T {
+  elem : int
+  once next : Node
+
+  def init(e : int) : void {
+   this.elem = e;
+  }
+}
+
+lockfree trait Enqueue {
+  require spec last : Node | elem
+
+  def enqueue(x : int) : void {
+    let n = new Node(x);
+    let done = false;
+    while(not done) {
+      let oldLast = speculate this.last;
+      done = try(oldLast.next = n);
+      CAT(this.last, oldLast, oldLast.next);
+    }
+  }
+}
+
+lockfree trait Dequeue {
+  require spec first : Node || elem
+
+  def dequeue() : int {
+    while(true) {
+      let oldFirst = speculate this.first;
+      if(not isStable(oldFirst.next)) then
+        return -1;
+      if (CAT(this.first, oldFirst, oldFirst.next) => elem) then {
+        return elem;
+      }
+    };
+    return -1;
+  }
+}
+
+shared class Queue : Enqueue * Dequeue {
+  spec first : Node || elem
+  spec last  : Node | elem
+
+  def init() : void {
+    let dummy = new Node(0);
+    this.first = consume dummy;
+    this.last = speculate this.first;
+  }
+}
+
+class Agent {
+  seed: int
+  q : Queue
+  over : bool
+  main : Main
+  ops : int
+  elements : int
+
+  def init(main:Main, elements:int, q:Queue) : void {
+    this.main = main;
+    let it = this;
+    this.over = false;
+    this.ops = 0;
+    this.seed = embed int (unsigned long)(#{it}+1) + (time(0) << 4); end;
+    this.elements = elements;
+    this.q = q;
+  }
+
+  def start() : void {
+    this!loop();
+  }
+
+  def loop() : void {
+    if this.over then {
+      this.main!done(this.ops);
+      return;
+    } else {
+      let nkeys = this.elements * 2;
+      let seed = this.seed;
+      embed void (
+        {
+          int seed;
+          unsigned long r;
+          unsigned long action;
+          unsigned long amask = (1<<10) - 1;
+          long key;
+
+          seed = #{seed};
+          for (int i = 0; i < 100; i++) {
+            seed = r = myrandom(seed);
+            action = r & 1;
+            r >>= 1;
+            key = r % #{nkeys};
+
+            if (action) {
+            puts("enqueue");
+              _enc__method_Queue_enqueue_future(_ctx,
+                _this->_enc__field_q, key);
+            } else {
+              _enc__method_Queue_dequeue_future(_ctx, _this->_enc__field_q);
+            }
+          }
+          _this->_enc__field_seed = seed;
+        }
+      ); end;
+      this.ops = this.ops + 100;
+      this!loop();
+    };
+  }
+
+  def stop() : void {
+    this.over = true;
+  }
+}
+
+
+class Main
+  threads : int
+  total_ops : int
+  joined_t : int
+  start : int
+
+  def done(ops:int) : void {
+    this.total_ops = this.total_ops + ops;
+    this.joined_t = this.joined_t + 1;
+    if (this.threads == this.joined_t) then {
+      let over = embed int get_clock_getime(); end;
+      if this.total_ops == 0 then {
+        print "Error: zero ops";
+        assertTrue(false);
+      };
+      let co = if this.threads <= 64 then this.threads else 1;
+      print(co * (over - this.start) / this.total_ops);
+    };
+  }
+
+  def main(args:[String]) : void {
+    if (|args| != 4) then {
+      print "runtime elements threads";
+      return;
+    };
+    let runtime = (
+      match (args[1]).to_int() with
+        Just n => n
+        Nothing => 0);
+    let elements = (
+      match (args[2]).to_int() with
+        Just n => n
+        Nothing => 0);
+    let threads = (
+      match (args[3]).to_int() with
+        Just n => n
+        Nothing => 0);
+
+    -- print runtime;
+    -- print elements;
+    -- print threads;
+
+    this.joined_t = 0;
+    this.threads = threads;
+
+    let q = new Queue;
+
+    repeat i <- elements {
+      q.enqueue(i*2);
+    };
+
+    let agents = new [Agent](threads);
+    repeat i <- threads {
+      agents[i] = new Agent(this, elements, q);
+    };
+    this.start = embed int get_clock_getime(); end;
+    repeat i <- threads {
+      agents[i]!start();
+    };
+    embed void milisleep(#{runtime}); end;
+    repeat i <- threads {
+      agents[i]!stop();
+    };
+  }
+
