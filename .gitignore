@@ -1,4 +1,3 @@
-db_list.m
-db_queue.m
+db_*.m
 encore_code/
 !encore_code/*.enc
