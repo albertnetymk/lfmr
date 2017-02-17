@@ -11,14 +11,14 @@
 void testloop_body()
 {
     int i;
-    int n = 100;
+    const int n = 100;
     /* Get all our randomness out of r and split it up.
      * Should have enough bits
      */
     unsigned long r;
     unsigned long action;
     long key;
-    struct queue *q = (struct queue*)tg->data_structure;
+    struct queue *q = (struct queue*)global_ds;
 
     for (i = 0; i < n; i++) {
         /* Using Random(), we weren't getting a uniform mix of enqueues
@@ -31,7 +31,7 @@ void testloop_body()
         //r = i;
         action = r & 1;
         r >>= 1;
-        key = r % tg->nkeys;
+        key = r % n_keys;
 
         if (action) {
             enqueue(q, key);
@@ -41,46 +41,21 @@ void testloop_body()
     }
 
     /* Record another n operations. */
-    this_thread()->op_count += n;
-}
-
-void usage(char *argv[])
-{
-    fprintf(stderr, "Usage: %s: nmilli nelements nthreads\n",
-            argv[0]);
-    exit(-1);
+    threads[thread_id].ops += n;
 }
 
 void setup_test(int argc, char **argv)
 {
-    int i, j;
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s: nmilli nelements nthreads\n",
+                argv[0]);
+        exit(-1);
+    }
 
-    if (argc > 1) {
-        tg->nmilli = strtoul(argv[1], NULL, 0);
-    } else {
-        tg->nmilli = 10000;
-    }
-    if (argc > 2) {
-        tg->nelements = strtoul(argv[2], NULL, 0);
-    } else {
-        tg->nelements = 10;
-    }
-    tg->nkeys = tg->nelements * 2;
-    if (tg->nkeys == 0) {
-        tg->nkeys = 1;
-    }
-    if (argc > 3) {
-        tg->nthreads = strtoul(argv[3], NULL, 0);
-        if (tg->nthreads > MAX_THREADS) {
-            printf("ERROR: Max threads is %lu\n", MAX_THREADS);
-            exit(1);
-        }
-    } else {
-        tg->nthreads = 2;
-    }
-    if (argc > 4) {
-        usage(argv);
-    }
+    n_ms = (uint32_t)atoi(argv[1]);
+    n_elements = (uint32_t)atoi(argv[2]);
+    n_threads = (uint32_t)atoi(argv[3]);
+    n_keys = n_elements * 2;
 
     /* Initialize the random number generator. */
     init_Random();
@@ -95,17 +70,13 @@ void setup_test(int argc, char **argv)
     mr_init();
 
     /* Initialize data_structure. */
-    queue_init((struct queue**)&tg->data_structure);
+    queue_init((struct queue**)&global_ds);
 
     /* Populate our queue.
      * Don't use Random(). With a read-only workload, the list will never
      * change, and that could really our tests up by giving one algorithm
      * an easier list to search.*/
-    for (i = 0, j = 0; i < tg->nelements; i++, j += 2) {
-        enqueue((struct queue*)tg->data_structure, j);
+    for (uint32_t i = 0, j = 0; i < n_elements; i++, j += 2) {
+        enqueue((struct queue*)global_ds, j);
     }
-
-    /* Summarize our parameters. */
-    printf("%s: nmilli: %d nelements: %d nthreads: %d\n",
-           argv[0], tg->nmilli, tg->nelements, tg->nthreads);
 }
