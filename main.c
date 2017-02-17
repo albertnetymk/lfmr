@@ -119,7 +119,8 @@ static size_t runtest()
     for (uint32_t i = 0; i < n_threads; i++) {
         total_ops += threads[i].ops;
     }
-    return (size_t)((end - start) * NS_PER_S) / total_ops;
+    unsigned int co = n_threads <= 64 ? n_threads : 1;
+    return (size_t)(co * (end - start) * NS_PER_S) / total_ops;
 }
 
 int main(int argc, char **argv)
