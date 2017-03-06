@@ -2,24 +2,39 @@
 
 cheap=1
 if [[ $cheap == 0 ]] ; then
-    gcs=(ebr rc hp dw)
+    gcs=(ebr rc hp dw jvm)
     threads=(1 2 4 8 16 31 32 63 64) # 9
     elements=(100 200 400 800 1600) # 5
     iteration=($(seq 1 5))
     # unit: ms
-    runtime=1000
+    runtime=10000
 else
-    gcs=(ebr rc hp dw)
-    threads=(2) # 9
-    elements=(100) # 5
+    # gcs=(ebr rc hp dw jvm)
+    gcs=(jvm)
+    threads=(64) # 9
+    elements=(1600) # 5
     # unit: ms
-    runtime=1000
-    iteration=($(seq 1 1))
+    runtime=10000
+    iteration=($(seq 1 5))
 fi
+make clean
+rm -f core
+ulimit -c unlimited
+
+typeset -A cores
+cores[1]="0"
+cores[2]="0,8"
+cores[4]="0,8,16,24"
+cores[8]="0,8,16,24,32,40,48,60"
+cores[16]="0,8,16,24,32,40,48,60,2,10,18,26,34,42,50,58"
+cores[31]="0,8,16,24,32,40,48,60,2,10,18,26,34,42,50,58,3,11,19,27,35,43,51,59,1,9,17,25,33,41,49"
+cores[32]="0,8,16,24,32,40,48,60,2,10,18,26,34,42,50,58,3,11,19,27,35,43,51,59,1,9,17,25,33,41,49,57"
+cores[63]="0-62"
+cores[64]="0-63"
 
 cat > db_prg.m << EOF
 % all mr algo
-ebr=1; rc=2; hp=3; dw=4;
+ebr=1; rc=2; hp=3; dw=4; jvm=5;
 gcs = [$gcs];
 threads = [$threads];
 elements = [$elements];
@@ -32,12 +47,12 @@ for gc = gcs
             db_prg_total_avg(...
                 find(gcs == gc), ...
                 find(threads == t), ...
-                find(elements == e), ...
+                find(elements == e) ...
                 ) = ans(1);
             db_prg_total_std(...
                 find(gcs == gc), ...
                 find(threads == t), ...
-                find(elements == e), ...
+                find(elements == e) ...
                 ) = ans(2);
         endfor
     endfor
@@ -52,20 +67,20 @@ for gc = gcs
             db_prg_footprint_avg(...
                 find(gcs == gc), ...
                 find(threads == t), ...
-                find(elements == e), ...
+                find(elements == e) ...
                 ) = ans(1);
             db_prg_footprint_std(...
                 find(gcs == gc), ...
                 find(threads == t), ...
-                find(elements == e), ...
+                find(elements == e) ...
                 ) = ans(2);
         endfor
     endfor
 endfor
- db_prg_total_avg
- db_prg_total_std
- db_prg_footprint_avg
- db_prg_footprint_std
+% db_prg_total_avg
+% db_prg_total_std
+% db_prg_footprint_avg
+% db_prg_footprint_std
 % save db_prg.mat db_prg_total_avg db_prg_total_std db_prg_footprint_avg db_prg_footprint_std
 EOF
 perl -pe 's!prg!queue!g' db_prg.m > db_queue.m
@@ -83,9 +98,12 @@ for gc in $gcs; do
                     /usr/bin/time -f "%M" -o mem.txt \
                         ./test_queue_lf_${gc}.exe --ponythreads $(($t+1)) \
                         $runtime $e $t >> total.m
+                elif [[ $gc == "jvm" ]]; then
+                    /usr/bin/time -f "%M" -o mem.txt \
+                        java MyQueue $runtime $e $t >> total.m
                 else
                     /usr/bin/time -f "%M" -o mem.txt \
-                    ./test_queue_lf_${gc}.exe $runtime $e $t >> total.m
+                        ./test_queue_lf_${gc}.exe $runtime $e $t >> total.m
                 fi
                 cat mem.txt >> footprint.m
             done

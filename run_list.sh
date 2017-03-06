@@ -2,7 +2,7 @@
 
 cheap=0
 if [[ $cheap == 0 ]] ; then
-    gcs=(ebr rc hp dw)
+    gcs=(ebr rc hp dw jvm)
     threads=(1 2 4 8 16 31 32 63 64) # 9
     elements=(100 200 400 800 1600) # 5
     update=(0 20 40 60 80 100) # 6
@@ -10,18 +10,21 @@ if [[ $cheap == 0 ]] ; then
     # unit: ms
     runtime=10000
 else
-    gcs=(ebr rc hp dw)
-    threads=(2)
-    elements=(100)
-    update=(20)
+    gcs=(dw)
+    threads=(63 64) # 9
+    elements=(100 200 400 800 1600) # 5
+    update=(0 20 40 60 80 100) # 6
     # unit: ms
-    runtime=1000
-    iteration=($(seq 1 1))
+    runtime=10000
+    iteration=($(seq 1 5))
 fi
+make clean
+rm -f core
+ulimit -c unlimited
 
 cat > db_prg.m << EOF
 % all mr algo
-ebr=1; rc=2; hp=3; dw=4;
+ebr=1; rc=2; hp=3; dw=4; jvm=5;
 gcs = [$gcs];
 threads = [$threads];
 elements = [$elements];
@@ -73,10 +76,10 @@ for gc = gcs
         endfor
     endfor
 endfor
- db_prg_total_avg
- db_prg_total_std
- db_prg_footprint_avg
- db_prg_footprint_std
+% db_prg_total_avg
+% db_prg_total_std
+% db_prg_footprint_avg
+% db_prg_footprint_std
 save db_prg.mat db_prg_total_avg db_prg_total_std db_prg_footprint_avg db_prg_footprint_std
 EOF
 perl -pe 's!prg!list!g' db_prg.m > db_list.m
@@ -84,10 +87,12 @@ perl -pe 's!prg!list!g' db_prg.m > db_list.m
 : > list.total.log
 : > list.footprint.log
 for gc in $gcs; do
+    make -s clean
     make -s test_list_lf_${gc}
     for t in $threads; do
         for e in $elements; do
             for u in $update; do
+                echo "$gc $t $e $u"
                 echo "total = [" > total.m
                 echo "footprint = [" > footprint.m
                 for i in $iteration; do
@@ -95,6 +100,9 @@ for gc in $gcs; do
                         /usr/bin/time -f "%M" -o mem.txt \
                             ./test_list_lf_${gc}.exe --ponythreads $(($t+1)) \
                             $runtime $u $e $t >> total.m
+                    elif [[ $gc == "jvm" ]]; then
+                        /usr/bin/time -f "%M" -o mem.txt \
+                            java MyList $runtime $u $e $t >> total.m
                     else
                         /usr/bin/time -f "%M" -o mem.txt \
                         ./test_list_lf_${gc}.exe $runtime $u $e $t >> total.m

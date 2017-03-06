@@ -1,13 +1,13 @@
 load ./db_list.mat;
 % list of mr algo
-ebr=1; rc=2; hp=3; dw=4;
-gcs = [ebr rc hp dw];
+ebr=1; rc=2; hp=3; dw=4; jvm=5;
+gcs = [ebr rc hp dw jvm];
 threads = [1 2 4 8 16 31 32 63 64];
 elements = [100 200 400 800 1600];
 update = [0 20 40 60 80 100];
 
-exclude_rc = 0;
-mylegend = {"ebr"; "rc"; "hp"; "dw"};
+exclude_rc = 1;
+mylegend = {"ebr"; "rc"; "hp"; "encore"; "jvm"};
 
 if exclude_rc == 1
     mylegend(2,:) = [];
@@ -18,18 +18,22 @@ function myplot(x, y, err, myxlabel, myylabel, xtick, mylegend, mytitle, filenam
     fullscreen = get(0,'ScreenSize');
     figure(1, 'Position',[0 -50 fullscreen(3) fullscreen(4)]);
     clf;
-    if size(x, 2) == 3
+    y = y/1000;
+    err = err/1000;
+    if size(x, 2) == 4
         errorbar(...
-            x(:, 1), y(:, 1), err(:, 1), '-', ...
-            x(:, 2), y(:, 2), err(:, 2), '-*', ...
-            x(:, 3), y(:, 3), err(:, 3), '-o' ...
+            x(:, 1), y(:, 1), err(:, 1), '-b', ...
+            x(:, 2), y(:, 2), err(:, 2), '-*r', ...
+            x(:, 3), y(:, 3), err(:, 3), '-ok', ...
+            x(:, 4), y(:, 4), err(:, 4), '-pm' ...
             )
     else
         errorbar(...
-            x(:, 1), y(:, 1), err(:, 1), '-', ...
-            x(:, 2), y(:, 2), err(:, 2), '-s', ...
-            x(:, 3), y(:, 3), err(:, 3), '-*', ...
-            x(:, 4), y(:, 4), err(:, 4), '-o' ...
+            x(:, 1), y(:, 1), err(:, 1), '-b', ...
+            x(:, 2), y(:, 2), err(:, 2), '-sg', ...
+            x(:, 3), y(:, 3), err(:, 3), '-*r', ...
+            x(:, 4), y(:, 4), err(:, 4), '-ok', ...
+            x(:, 5), y(:, 5), err(:, 5), '-pm' ...
             )
     end
     % errorbar(x, y, err, ">.r");
@@ -44,17 +48,24 @@ function myplot(x, y, err, myxlabel, myylabel, xtick, mylegend, mytitle, filenam
     print(1, filename)
 end
 
-directory_prefix = '';
 data_avg = 0;
 data_std = 0;
-for i = 1:2
+for i = 1:1
     if i == 1
-        directory_prefix = 'plots/list/exec_time';
+        if exclude_rc == 1
+            prefix = strcat(directory_prefix, '/exec_time');
+        else
+            prefix = strcat(directory_prefix, '/include_rc_exec_time');
+        end
         data_avg = db_list_total_avg;
         data_std = db_list_total_std;
-        myylabel = 'cpu time per operation (nanoseconds)';
+        myylabel = 'cpu time per operation (microseconds)';
     else
-        directory_prefix = 'plots/list/footprint';
+        if exclude_rc == 1
+            prefix = strcat(directory_prefix, '/footprint');
+        else
+            prefix = strcat(directory_prefix, '/include_rc_footprint');
+        end
         data_avg = db_list_footprint_avg;
         data_std = db_list_footprint_std;
         myylabel = 'footprint (kilybytes)';
@@ -62,7 +73,7 @@ for i = 1:2
     for t = threads
         for e = elements
             xtick = update;
-            x = repmat(xtick', 1, 4);
+            x = repmat(xtick', 1, size(gcs, 2));
             y = x;
             err = x;
             for gc = gcs
@@ -82,7 +93,7 @@ for i = 1:2
               sprintf("lockfree linked list #threads=%d, #elements=%d", t, e);
             myxlabel = 'update percent';
             xtick = update;
-            filename = sprintf("%s/list_%d_%d_%s.png", directory_prefix, t, e, 'x');
+            filename = sprintf("%s/list_%d_%d_%s.png", prefix, t, e, 'x');
             myplot(x, y, err, myxlabel, myylabel, xtick, mylegend, mytitle, filename)
         end
     end
@@ -90,7 +101,7 @@ for i = 1:2
     for t = threads
         for u = update
             xtick = elements;
-            x = repmat(xtick', 1, 4);
+            x = repmat(xtick', 1, size(gcs, 2));
             y = x;
             err = x;
             for gc = gcs
@@ -109,7 +120,7 @@ for i = 1:2
             mytitle = ...
               sprintf("lockfree linked list #threads=%d, update=%d%%", t, u);
             myxlabel = '#elements';
-            filename = sprintf("%s/list_%d_%s_%d.png", directory_prefix, t, 'x', u);
+            filename = sprintf("%s/list_%d_%s_%d.png", prefix, t, 'x', u);
             myplot(x, y, err, myxlabel, myylabel, xtick, mylegend, mytitle, filename)
         end
     end
@@ -117,7 +128,7 @@ for i = 1:2
     for e = elements
         for u = update
             xtick = threads;
-            x = repmat(xtick', 1, 4);
+            x = repmat(xtick', 1, size(gcs, 2));
             y = x;
             err = x;
             for gc = gcs
@@ -136,7 +147,7 @@ for i = 1:2
             mytitle = ...
               sprintf("lockfree linked list #elements=%d, update=%d%%", e, u);
             myxlabel = '#threads';
-            filename = sprintf("%s/list_%s_%d_%d.png", directory_prefix, 'x', e, u);
+            filename = sprintf("%s/list_%s_%d_%d.png", prefix, 'x', e, u);
             myplot(x, y, err, myxlabel, myylabel, xtick, mylegend, mytitle, filename)
         end
     end

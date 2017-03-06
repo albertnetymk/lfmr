@@ -17,6 +17,10 @@
 #define CACHESIZE 64           /* Should cover most machines. */
 #define MAX_THREADS 65
 
+typedef struct item_list_t item_list_t;
+typedef struct dw_gc_t dw_gc_t;
+typedef struct auto_ebr_t auto_ebr_t;
+
 typedef struct per_thread_t {
     __attribute__ ((__aligned__(CACHESIZE)))
     pthread_t thread;
@@ -60,6 +64,12 @@ typedef struct per_thread_t {
     int in_critical;
     int entries_since_update;
     int epoch;
+
+    item_list_t *item_list;
+    dw_gc_t *dw_gc;
+
+    auto_ebr_t *auto_ebr;
+    uint32_t thread_id;
 } per_thread_t;
 
 typedef enum {

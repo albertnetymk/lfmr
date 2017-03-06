@@ -77,15 +77,21 @@ lockfree trait Enqueue {
 
 lockfree trait Dequeue {
   require spec first : Node || elem
+  require spec last : Node | elem
 
   def dequeue() : int {
     while(true) {
       let oldFirst = speculate this.first;
       if(not isStable(oldFirst.next)) then
         return -1;
-      if (CAT(this.first, oldFirst, oldFirst.next) => elem) then {
-        return elem;
-      }
+      let oldLast = speculate this.last;
+      -- if (oldFirst == oldLast) then {
+      --   CAT(this.last, oldLast, oldLast.next);
+      -- } else {
+        if (CAT(this.first, oldFirst, oldFirst.next) => elem) then {
+          return elem;
+        };
+      -- };
     };
     return -1;
   }

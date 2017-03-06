@@ -76,6 +76,7 @@ lockfree trait Insert {
           return false;
         } else {
           -- print "insert";
+          -- embed void printf("next %p\n", _newNode_2->_enc__field_next); end;
           newNode.next = r;
           -- Try to insert the element
           if(CAT(l.next, r, newNode)) then {
@@ -135,7 +136,9 @@ shared class List : Insert * Delete * Find {
 
   def init() : void {
     let dummyHead = new Node(0);
+    -- print("head is {}\n", dummyHead);
     let dummyTail = new Node(-1);
+    -- print("head is {}\n", dummyHead);
     dummyHead.next = consume dummyTail;
     this.tail = speculate dummyHead.next;
     this.head = consume dummyHead;

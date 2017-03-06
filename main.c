@@ -30,8 +30,12 @@ __thread uint32_t thread_id;
 
 node_t *global_freelist;
 
+static struct itimerval itimer;
+
 static void *thread_start(void *id)
 {
+    // setitimer(ITIMER_PROF, &itimer, NULL);
+
     thread_id = (uint32_t)id;
 
     /* Seed the random number generator. */
@@ -55,16 +59,20 @@ static void *thread_start(void *id)
 // #define USE_AFFINITY
 static size_t runtest()
 {
+    // getitimer(ITIMER_PROF, &itimer);
     int ret;
     (void)ret;
     double start, end;                   /* Start and end times for the test. */
     cpu_set_t cpuset, basecpuset;
+    (void) cpuset;
+    (void) basecpuset;
 
     /* Make sure the threads don't start prematurely. */
     test_state = TEST_NOT_STARTED;
 
     /* Re-initialize the memory reclamation scheme. */
     mr_reinitialize();
+
 
 #ifdef USE_AFFINITY
     /* Get the CPU cpuset. */
@@ -99,7 +107,7 @@ static size_t runtest()
 #endif
     }
 
-    /* Start the test and go to sleep for the specified amount of time. */
+    // Start the test and go to sleep for the specified amount of time.
     struct timeval tv;                   /* Lets parent sleep during test. */
     tv.tv_sec = n_ms / 1000;
     tv.tv_usec = (n_ms % 1000) * 1000;
