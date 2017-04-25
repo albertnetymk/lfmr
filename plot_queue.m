@@ -19,6 +19,7 @@ function myplot(x, y, err, myxlabel, myylabel, xtick, mylegend, mytitle, filenam
     clf;
     y = y/1000;
     err = err/1000;
+    set (0, "defaultlinelinewidth", 2);
     if size(x, 2) == 4
         errorbar(...
             x(:, 1), y(:, 1), err(:, 1), '-b', ...
