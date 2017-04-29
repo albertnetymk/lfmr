@@ -1,0 +1,3 @@
+
+def id(x: String): String
+  x

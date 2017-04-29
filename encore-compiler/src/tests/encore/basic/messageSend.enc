@@ -1,0 +1,10 @@
+class Foo
+  def foo(s : String) : void
+    print s
+
+class Main
+  def main() : void
+    let x = new Foo
+        s = "Hello, Ponyworld!"
+    in
+      x!foo(s)

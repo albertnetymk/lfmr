@@ -1,0 +1,15 @@
+class Main
+  def main() : Fut (Fut void)
+    let o = new Other in {
+      this.sayName();
+      o.greet(this)
+    }
+
+  def sayName() : void
+    print "I'm Ponyworld!"
+
+class Other
+  def greet(client : Main) : Fut void {
+    print "Hello,";
+    client.sayName()
+  }

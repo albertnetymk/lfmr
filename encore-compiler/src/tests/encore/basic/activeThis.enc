@@ -1,0 +1,34 @@
+class Foo
+  def fr0b() : bool
+    true
+
+  def foo() : Fut bool
+    let that = this in{
+      that.fr0b();
+    }
+
+  def bar() : Fut bool
+    let that = null : Foo in{
+      that = this;
+      that.fr0b()
+    }
+
+  def baz() : Fut bool
+    let id = \ (x : a) -> x
+        that = id(this)
+    in
+      that.fr0b()
+
+passive class Kiko
+  def xxx(x: int): int
+    x
+
+class Main
+  def main() : void
+    let k = (new Kiko).xxx(3)
+      x = new Foo in{
+      assertTrue(get get x.foo());
+      assertTrue(get get x.bar());
+      assertTrue(get get x.baz());
+      print "Done!"
+    }

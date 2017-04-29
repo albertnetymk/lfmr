@@ -1,0 +1,7 @@
+
+import Utils
+
+
+class Main
+  def main(): void
+    print(id("Hello"))

@@ -1,0 +1,11 @@
+class Main
+  def main() : Fut void
+    let other = new Other("Hello Ponyworld-message") in
+      other.work()
+
+class Other
+  message : String
+  def init(va : String) : void
+    this.message = va
+  def work() : void
+    print this.message

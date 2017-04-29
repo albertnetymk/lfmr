@@ -1,0 +1,15 @@
+class Main
+  def main() : void
+    let other = new Other(10) in
+      other!work()
+
+class Other
+  count : int
+  def init(va : int) : void
+    this.count = va
+  def work() : void
+    {this.count = this.count - 1;
+     this.count = this.count - 1;
+     this.count = this.count - 1;
+     print this.count;
+     print "Hello Ponyworld!"}

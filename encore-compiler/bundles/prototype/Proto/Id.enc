@@ -1,0 +1,5 @@
+
+bundle Proto.Id where
+
+def id(x: String): String
+    x

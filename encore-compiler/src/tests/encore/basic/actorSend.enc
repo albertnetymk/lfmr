@@ -1,0 +1,17 @@
+class Main
+  def main() : Fut (Fut void)
+    let other = new Other
+        another = new Other
+    in
+      {other.setOther(another);
+       other.work()}
+
+class Other
+  other : Other
+  def setOther(va : Other) : void
+    this.other = va
+  def work() : Fut void
+    let othertmp = this.other in
+      othertmp.printMsg()
+  def printMsg() : void
+    print "Hello Actorworld!"

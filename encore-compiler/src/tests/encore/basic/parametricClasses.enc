@@ -1,0 +1,34 @@
+class Cell<a>
+  value : a
+  def init(value : a) : void
+    this.value = value
+
+  def getVal() : a
+    this.value
+
+  def clone(value : a): void
+    new Cell<a>(value)
+
+class Pair<a, b>
+  fst : a
+  snd : b
+  def init(fst : a, snd : b) : void{
+    this.fst = fst;
+    this.snd = snd
+  }
+  def getFst() : a
+    this.fst
+
+  def getSnd() : b
+    this.snd
+
+class Main
+  def main() : void{
+    let p = new Pair<int, String>(42, "fortytwo")
+        c = new Cell<Pair<int, String>>(p)
+        pp = get c.getVal()
+    in {
+      print get pp.getFst();
+      print get pp.getSnd();
+    };
+  }

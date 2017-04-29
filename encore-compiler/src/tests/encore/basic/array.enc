@@ -1,0 +1,28 @@
+class Foo
+  def ret() : [int]
+    new [int](10)
+  def foo(m:Main) : void
+    let
+      a = this.ret()
+    in {
+      repeat i <- 10
+        a[i] = i;
+      m ! continue(a)
+    }
+
+class Main
+  def continue(a:[int]) : void
+    let
+        b = ["foo", "bar"]
+    in {
+      repeat i <- |a|
+        print a[i];
+      print b[0];
+      print b[1];
+    }
+
+  def main() : void
+    let
+      x = new Foo
+    in
+      x ! foo(this)

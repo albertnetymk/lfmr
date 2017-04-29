@@ -1,0 +1,11 @@
+class Main
+  def main() : void
+    let other = new Other in {
+       other!printTwo("Hello", "Ponyworld!");
+    }
+
+class Other
+  def printTwo(a : String, b : String) : void {
+    print a;
+    print b
+  }

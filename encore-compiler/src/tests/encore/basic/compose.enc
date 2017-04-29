@@ -1,0 +1,10 @@
+def compose(g : int -> int, f : int -> int) : int -> int
+  \(x : int) -> g(f(x))
+
+class Main
+  def main() : void
+    let double = \(x : int) -> x*2
+        bump = \(x : int) -> x+1
+        f = compose(double, bump)
+    in
+      print f(3)
