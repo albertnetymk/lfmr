@@ -7,7 +7,7 @@ elements = [100 200 400 800 1600];
 update = [0 20 40 60 80 100];
 
 exclude_rc = 1;
-mylegend = {"ebr"; "rc"; "hp"; "encore"; "jvm"; "aoa"};
+mylegend = {"ebr"; "rc"; "hp"; "isolde"; "jvm"; "aoa"};
 
 if exclude_rc == 1
     mylegend(2,:) = [];

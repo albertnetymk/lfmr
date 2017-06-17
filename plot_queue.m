@@ -6,7 +6,7 @@ threads = [1 2 4 8 16 31 32 63 64];
 elements = [100 200 400 800 1600];
 
 exclude_rc = 0;
-mylegend = {"ebr"; "rc"; "hp"; "encore"; "jvm"};
+mylegend = {"ebr"; "rc"; "hp"; "isolde"; "jvm"};
 
 if exclude_rc == 1
     mylegend(2,:) = [];
